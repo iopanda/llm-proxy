@@ -167,6 +167,102 @@ func TestBuildUpstreamRequest_ConfigTokenStripsClientAuth(t *testing.T) {
 	}
 }
 
+func TestExtractClientToken_BearerAuth(t *testing.T) {
+	r, _ := http.NewRequest(http.MethodPost, "/", nil)
+	r.Header.Set("Authorization", "Bearer sk-client-token")
+
+	if got := extractClientToken(r); got != "sk-client-token" {
+		t.Errorf("token=%q, want sk-client-token", got)
+	}
+}
+
+func TestExtractClientToken_ApiKey(t *testing.T) {
+	r, _ := http.NewRequest(http.MethodPost, "/", nil)
+	r.Header.Set("X-Api-Key", "sk-ant-client")
+
+	if got := extractClientToken(r); got != "sk-ant-client" {
+		t.Errorf("token=%q, want sk-ant-client", got)
+	}
+}
+
+func TestExtractClientToken_PlainAuth(t *testing.T) {
+	r, _ := http.NewRequest(http.MethodPost, "/", nil)
+	r.Header.Set("Authorization", "sk-raw-token")
+
+	if got := extractClientToken(r); got != "sk-raw-token" {
+		t.Errorf("token=%q, want sk-raw-token", got)
+	}
+}
+
+func TestExtractClientToken_Empty(t *testing.T) {
+	r, _ := http.NewRequest(http.MethodPost, "/", nil)
+
+	if got := extractClientToken(r); got != "" {
+		t.Errorf("token=%q, want empty", got)
+	}
+}
+
+// TestBuildUpstreamRequest_HeaderTransform verifies that when no access_token is configured
+// but backend_auth_header is set, the client token is extracted and re-applied with the
+// configured header name and schema (e.g. x-api-key → Authorization: Bearer).
+func TestBuildUpstreamRequest_HeaderTransform(t *testing.T) {
+	body := []byte(`{"model":"claude","messages":[]}`)
+	r := httptest.NewRequest(http.MethodPost, "/claude/v1/messages", bytes.NewReader(body))
+	r.Header.Set("X-Api-Key", "sk-ant-client")
+
+	modelCfg := &config.ModelConfig{
+		FrontendModelName: "claude",
+		BackendModelName:  "us.anthropic.claude-sonnet-4-6",
+		FrontendBaseURL:   "/claude",
+		BackendBaseURL:    "https://internal-bedrock.example.com",
+		BackendAuthHeader: "Authorization",
+		BackendAuthSchema: "Bearer",
+		// no BackendAPIKey — token comes from client
+	}
+
+	req, err := buildUpstreamRequest(r, body, modelCfg, "/claude")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := req.Header.Get("Authorization"); got != "Bearer sk-ant-client" {
+		t.Errorf("Authorization=%q, want Bearer sk-ant-client", got)
+	}
+	if got := req.Header.Get("X-Api-Key"); got != "" {
+		t.Errorf("X-Api-Key should be stripped, got %q", got)
+	}
+}
+
+// TestBuildTranslatedRequest_HeaderTransform verifies header name+schema transformation
+// in translation mode when no access_token is configured.
+func TestBuildTranslatedRequest_HeaderTransform(t *testing.T) {
+	body := []byte(`{"model":"us.anthropic.claude-sonnet-4-6","messages":[]}`)
+	r := httptest.NewRequest(http.MethodPost, "/claude/v1/messages", bytes.NewReader(body))
+	r.Header.Set("X-Api-Key", "sk-ant-client")
+
+	modelCfg := &config.ModelConfig{
+		FrontendModelName: "claude",
+		BackendModelName:  "us.anthropic.claude-sonnet-4-6",
+		FrontendBaseURL:   "/claude",
+		BackendBaseURL:    "https://internal-bedrock.example.com",
+		BackendAuthHeader: "Authorization",
+		BackendAuthSchema: "Bearer",
+		// no BackendAPIKey — token comes from client
+	}
+
+	req, err := buildTranslatedRequest(r, body, modelCfg, "https://internal-bedrock.example.com/v1/messages")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := req.Header.Get("Authorization"); got != "Bearer sk-ant-client" {
+		t.Errorf("Authorization=%q, want Bearer sk-ant-client", got)
+	}
+	if got := req.Header.Get("X-Api-Key"); got != "" {
+		t.Errorf("X-Api-Key should be stripped, got %q", got)
+	}
+}
+
 func TestBuildUpstreamRequest_RewritesModel_Gemini(t *testing.T) {
 	body := []byte(`{"model":"my-gemini","contents":[]}`)
 	r := httptest.NewRequest(http.MethodPost, "/gemini/v1beta/models/my-gemini:generateContent", bytes.NewReader(body))

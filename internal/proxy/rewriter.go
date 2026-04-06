@@ -48,6 +48,12 @@ func buildUpstreamRequest(r *http.Request, body []byte, modelCfg *config.ModelCo
 		skipHeaders := authHeadersToSkip(modelCfg.BackendAuthHeader)
 		copyRequestHeaders(upstreamReq.Header, r.Header, skipHeaders)
 		setAuthHeader(upstreamReq, modelCfg.BackendAuthHeader, modelCfg.BackendAuthSchema, modelCfg.BackendAPIKey)
+	} else if modelCfg.BackendAuthHeader != "" {
+		// Header transform: extract client token, re-apply with configured header name and schema.
+		token := extractClientToken(r)
+		skipHeaders := authHeadersToSkip(modelCfg.BackendAuthHeader)
+		copyRequestHeaders(upstreamReq.Header, r.Header, skipHeaders)
+		setAuthHeader(upstreamReq, modelCfg.BackendAuthHeader, modelCfg.BackendAuthSchema, token)
 	} else {
 		// Passthrough: copy all headers including auth, unchanged.
 		copyRequestHeaders(upstreamReq.Header, r.Header, nil)
@@ -84,6 +90,21 @@ func setAuthHeader(r *http.Request, authHeader, authScheme, token string) {
 	}
 }
 
+// extractClientToken extracts the raw bearer token from the incoming request.
+// It checks Authorization first (stripping any scheme prefix), then X-Api-Key.
+func extractClientToken(r *http.Request) string {
+	if auth := r.Header.Get("Authorization"); auth != "" {
+		if after, ok := strings.CutPrefix(auth, "Bearer "); ok {
+			return after
+		}
+		return auth
+	}
+	if key := r.Header.Get("X-Api-Key"); key != "" {
+		return key
+	}
+	return ""
+}
+
 // authHeadersToSkip returns the set of header names to strip when a configured token is used.
 // Always includes the well-known auth headers plus the model's own configured auth header.
 func authHeadersToSkip(configuredAuthHeader string) map[string]bool {
@@ -109,6 +130,12 @@ func buildTranslatedRequest(r *http.Request, body []byte, modelCfg *config.Model
 		skipHeaders := authHeadersToSkip(modelCfg.BackendAuthHeader)
 		copyRequestHeaders(upstreamReq.Header, r.Header, skipHeaders)
 		setAuthHeader(upstreamReq, modelCfg.BackendAuthHeader, modelCfg.BackendAuthSchema, modelCfg.BackendAPIKey)
+	} else if modelCfg.BackendAuthHeader != "" {
+		// Header transform: extract client token, re-apply with configured header name and schema.
+		token := extractClientToken(r)
+		skipHeaders := authHeadersToSkip(modelCfg.BackendAuthHeader)
+		copyRequestHeaders(upstreamReq.Header, r.Header, skipHeaders)
+		setAuthHeader(upstreamReq, modelCfg.BackendAuthHeader, modelCfg.BackendAuthSchema, token)
 	} else {
 		copyRequestHeaders(upstreamReq.Header, r.Header, nil)
 	}
