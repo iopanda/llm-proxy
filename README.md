@@ -17,7 +17,6 @@ A lightweight reverse proxy for LLM APIs. It routes requests to different upstre
 | `openai-chat` | Chat Completions `/v1/chat/completions` | OpenAI SDK, most OpenAI-compatible clients |
 | `openai-responses` | Responses API `/v1/responses` | Codex CLI (2025) |
 | `claude` | Messages API `/v1/messages` | Claude Code, Anthropic SDK |
-| `gemini` | GenerateContent `/v1beta/models/{model}:generateContent` | Google Gemini SDK |
 | `bedrock` | AWS Bedrock InvokeModel | AWS SDK, Bedrock clients |
 
 ## Quick Start
@@ -109,16 +108,6 @@ models:
     incoming_dialect: claude
     upstream_dialect: openai-chat
 
-  # Use Gemini from Codex CLI (Responses API):
-  - mapped: gemini-via-codex
-    original_model_name: gemini-1.5-pro
-    mapped_base_url: responses-compat
-    original_base_url: https://generativelanguage.googleapis.com
-    access_token: "AIza..."
-    auth_header: x-goog-api-key
-    auth_scheme: ""
-    incoming_dialect: openai-responses
-    upstream_dialect: gemini
 ```
 
 ### Config Fields
