@@ -1,0 +1,55 @@
+server:
+  port: 8080
+
+models:
+  # Pure proxy (no translation): client and upstream use the same API format.
+  # - frontend_model_name: gpt-4-proxy    # model name the client sends
+  #   frontend_base_url: /openai          # route prefix (must start with "/")
+  #   backend_model_name: gpt-4           # actual model name forwarded to upstream
+  #   backend_base_url: https://api.openai.com
+  #   backend_api_key: ""                 # leave empty to pass through client token
+  #   backend_auth_header: Authorization
+  #   backend_auth_schema: Bearer
+
+  # - frontend_model_name: claude-proxy
+  #   frontend_base_url: /claude
+  #   backend_model_name: claude-3-5-sonnet-20241022
+  #   backend_base_url: https://api.anthropic.com
+  #   backend_api_key: ""
+  #   backend_auth_header: x-api-key
+  #   backend_auth_schema: ""             # Claude uses raw token (no scheme prefix)
+
+  # Translation examples: convert between API formats.
+  #
+  # Use Claude via an OpenAI Chat-compatible client (e.g., any OpenAI SDK):
+  #   - frontend_model_name: claude-sonnet
+  #     frontend_base_url: /openai-compat
+  #     frontend_dialect: openai-chat      # client speaks OpenAI Chat
+  #     backend_model_name: claude-3-5-sonnet-20241022
+  #     backend_base_url: https://api.anthropic.com
+  #     backend_api_key: "sk-ant-..."
+  #     backend_auth_header: x-api-key
+  #     backend_auth_schema: ""
+  #     backend_dialect: claude            # upstream speaks Claude Messages API
+  #
+  # Use GPT via Claude Code (which sends Claude Messages API requests):
+  #   - frontend_model_name: gpt-4o
+  #     frontend_base_url: /claude-compat
+  #     frontend_dialect: claude           # client (Claude Code) speaks Claude
+  #     backend_model_name: gpt-4o
+  #     backend_base_url: https://api.openai.com
+  #     backend_api_key: "sk-..."
+  #     backend_auth_header: Authorization
+  #     backend_auth_schema: Bearer
+  #     backend_dialect: openai-responses  # upstream speaks OpenAI Responses API
+  #
+  # Use Gemini (OpenAI-compatible endpoint) via Claude Code:
+  #   - frontend_model_name: gemini-2.5-flash
+  #     frontend_base_url: /claude-compat
+  #     frontend_dialect: claude
+  #     backend_model_name: gemini-2.5-flash-preview-04-17
+  #     backend_base_url: https://generativelanguage.googleapis.com/v1beta/openai
+  #     backend_api_key: "AIza..."
+  #     backend_auth_header: Authorization
+  #     backend_auth_schema: Bearer
+  #     backend_dialect: openai-responses
